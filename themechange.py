@@ -1,14 +1,10 @@
-import sys
-print("Step 1: imports done", flush=True)
-
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-
-print("Step 2: creating session, this may take 20-40s...", flush=True)
+import time
 
 PACKAGE_NAME = "com.santa.web3.browser"
 APP_ACTIVITY = "com.google.android.apps.chrome.Main"
@@ -23,17 +19,66 @@ options.no_reset = True
 options.automation_name = "UiAutomator2"
 
 driver = webdriver.Remote(APPIUM_SERVER, options=options)
+wait = WebDriverWait(driver, 20)
+
+THEME_BUTTON = "com.santa.web3.browser:id/theme_btn"
+
+
+def get_theme():
+    """
+    Detect current theme using the Theme button state.
+    selected = true  -> Dark (Sun icon)
+    selected = false -> Light (Moon icon)
+    """
+
+    btn = driver.find_element(AppiumBy.ID, THEME_BUTTON)
+
+    selected = btn.get_attribute("selected")
+    checked = btn.get_attribute("checked")
+    desc = btn.get_attribute("contentDescription") or btn.get_attribute("content-desc") or ""
+
+    print("\n----- Theme Button Attributes -----")
+    print("selected :", selected)
+    print("checked  :", checked)
+    print("content-desc :", desc)
+    print("-----------------------------------")
+
+    if selected == "true" or checked == "true":
+        return "Dark (Sun Icon)"
+    else:
+        return "Light (Moon Icon)"
 
 
 try:
-    wait = WebDriverWait(driver, 15)
+
+    before = get_theme()
+    print(f"\nCurrent Theme : {before}")
+
     theme_btn = wait.until(
         EC.element_to_be_clickable(
-            (AppiumBy.ID, "com.santa.web3.browser:id/theme_btn")
+            (AppiumBy.ID, THEME_BUTTON)
         )
     )
+
     theme_btn.click()
-    print("Step 4: Theme button clicked successfully.", flush=True)
+    print("Theme button clicked.")
+
+    time.sleep(2)
+
+    after = get_theme()
+    print(f"Theme After : {after}")
+
+    print("\n========== RESULT ==========")
+
+    if before != after:
+        print("✅ PASS")
+        print(f"Theme changed successfully: {before} → {after}")
+    else:
+        print("❌ FAIL")
+        print("Theme did not change.")
+
 except TimeoutException:
-    print("Step 4: TIMEOUT - theme button not found, dumping page source", flush=True)
-    print(driver.page_source)
+    print("❌ Theme button not found.")
+
+finally:
+    driver.quit()
