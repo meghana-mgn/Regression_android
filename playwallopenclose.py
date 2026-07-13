@@ -115,8 +115,8 @@ try:
     size = toolbar.size
 
     start_x = loc["x"] + size["width"] // 2
-    start_y = loc["y"] + size["height"] // 2
-    end_y = start_y + 800
+    start_y = loc["y"] # it will be top of toolbar
+    end_y = start_y + 100
 
     print(
         f"DEBUG - swipe from ({start_x}, {start_y}) to ({start_x}, {end_y})",

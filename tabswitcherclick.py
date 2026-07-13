@@ -1,4 +1,5 @@
-import sys, time
+import time
+
 print("Step 1: imports done", flush=True)
 
 from appium import webdriver
@@ -14,6 +15,9 @@ PACKAGE_NAME = "com.santa.web3.browser"
 APP_ACTIVITY = "com.google.android.apps.chrome.Main"
 APPIUM_SERVER = "http://127.0.0.1:4723"
 
+TAB_SWITCHER_BUTTON_ID = "com.santa.web3.browser:id/tab_switcher_button"
+TAB_LIST_RECYCLER_VIEW_ID = "com.santa.web3.browser:id/tab_list_recycler_view"
+
 options = UiAutomator2Options()
 options.platform_name = "Android"
 options.device_name = "Android Device"
@@ -24,51 +28,40 @@ options.automation_name = "UiAutomator2"
 
 driver = webdriver.Remote(APPIUM_SERVER, options=options)
 
-TEST_PASSED = False  # overall result flag
+TEST_PASSED = False
 
 try:
-    wait = WebDriverWait(driver, 15)
-    print("Step 3: Santa Browser is open and running.", flush=True)
+    wait = WebDriverWait(driver, 20)
 
-    # --- Step 4: Open Recents/App Switcher ---
-    driver.press_keycode(187)
-    print("Step 4: Opened Recents screen.", flush=True)
-    time.sleep(2)
-
-    # --- Step 5: Swipe app card UP to remove it from Recents ---
-    window_size = driver.get_window_size()
-    width = window_size['width']
-    height = window_size['height']
-
-    driver.execute_script("mobile: swipeGesture", {
-        "left": int(width * 0.1),
-        "top": int(height * 0.3),
-        "width": int(width * 0.8),
-        "height": int(height * 0.4),
-        "direction": "up",
-        "percent": 1.0
-    })
-    print("Step 5: Swiped app card to remove from Recents.", flush=True)
-    time.sleep(2)
-
-    # --- Step 6: Reopen Santa Browser ---
-    driver.activate_app(PACKAGE_NAME)
-    print("Step 6: Santa Browser reopened.", flush=True)
-    time.sleep(10)
-
-    # ===== Assertion 2: Santa Browser relaunched successfully =====
-    browser_root = wait.until(
-        EC.visibility_of_element_located(
-            (AppiumBy.ID, "com.santa.web3.browser:id/cashback_btn")
+    # Step 3: Verify tab switcher button is visible and clickable.
+    tab_switcher_button = wait.until(
+        EC.element_to_be_clickable(
+            (AppiumBy.ID, TAB_SWITCHER_BUTTON_ID)
         )
     )
-    assert browser_root.is_displayed(), "Santa Browser did not relaunch after removing from Recents"
-    print("Step 7: Santa Browser relaunched successfully.", flush=True)
+
+    assert tab_switcher_button.is_displayed(), "Tab switcher button is not visible."
+    print("Step 3: Tab switcher button is visible.", flush=True)
+
+    # Step 4: Click tab switcher button.
+    tab_switcher_button.click()
+    print("Step 4: Tab switcher button clicked successfully.", flush=True)
+    time.sleep(2)
+
+    # Step 5: Verify tab list recycler view is visible.
+    tab_list_recycler_view = wait.until(
+        EC.visibility_of_element_located(
+            (AppiumBy.ID, TAB_LIST_RECYCLER_VIEW_ID)
+        )
+    )
+
+    assert tab_list_recycler_view.is_displayed(), "Tab list recycler view is not visible."
+    print("Step 5: Tab list recycler view is visible.", flush=True)
 
     TEST_PASSED = True
 
 except TimeoutException:
-    print("TIMEOUT - dumping page source for inspection", flush=True)
+    print("TIMEOUT - Tab switcher button or tab list recycler view not found.", flush=True)
     print(driver.page_source)
     TEST_PASSED = False
 
@@ -79,6 +72,7 @@ except AssertionError as e:
 
 except Exception as e:
     print(f"UNEXPECTED ERROR: {e}", flush=True)
+    print(driver.page_source)
     TEST_PASSED = False
 
 finally:
@@ -86,4 +80,5 @@ finally:
         print("\n========== TEST RESULT: PASSED ==========", flush=True)
     else:
         print("\n========== TEST RESULT: FAILED ==========", flush=True)
+
     driver.quit()

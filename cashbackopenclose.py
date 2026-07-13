@@ -72,11 +72,19 @@ try:
     )
 
     # --- Step 6: Swipe DOWN on drag handle to close popup ---
-    screen_height = driver.get_window_size()["height"]
 
-    drag_handle_x = (424 + 655) // 2
-    drag_handle_y = (141 + 228) // 2
-    end_y = int(screen_height * 0.95)
+    toolbar = wait.until(
+        EC.presence_of_element_located(
+            (AppiumBy.ID, "com.santa.web3.browser:id/toolbar")
+        )
+    )
+
+    loc = toolbar.location
+    size = toolbar.size
+
+    drag_handle_x = loc["x"] + size["width"] // 2
+    drag_handle_y = loc["y"]  # it will be top of toolbar
+    end_y = drag_handle_y + 300
 
     print(
         f"DEBUG - swipe from ({drag_handle_x}, {drag_handle_y}) to ({drag_handle_x}, {end_y})",
