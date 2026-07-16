@@ -1,118 +1,169 @@
-import sys, time
-print("Step 1: imports done", flush=True)
+import time
+
+print("Step 1: Imports done", flush=True)
 
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
 from appium.webdriver.common.appiumby import AppiumBy
+
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
 from selenium.common.exceptions import TimeoutException
 
-print("Step 2: creating session, this may take 20-40s...", flush=True)
+print("Step 2: Creating Appium session...", flush=True)
 
-PACKAGE_NAME = "com.santa.web3.browser"
-APP_ACTIVITY = "com.google.android.apps.chrome.Main"
-APPIUM_SERVER = "http://127.0.0.1:4723"
+# =====================================================
+# Desired Capabilities
+# =====================================================
 
 options = UiAutomator2Options()
+
 options.platform_name = "Android"
 options.device_name = "Android Device"
-options.app_package = PACKAGE_NAME
-options.app_activity = APP_ACTIVITY
-options.no_reset = True
 options.automation_name = "UiAutomator2"
 
-driver = webdriver.Remote(APPIUM_SERVER, options=options)
+options.app_package = "com.santa.web3.browser"
+options.app_activity = "com.google.android.apps.chrome.Main"
 
-TEST_PASSED = False  # overall result flag
+options.no_reset = True
+
+driver = webdriver.Remote(
+    "http://127.0.0.1:4723",
+    options=options
+)
+
+wait = WebDriverWait(driver, 20)
+
+TEST_PASSED = False
 
 try:
-    wait = WebDriverWait(driver, 15)
-    time.sleep(2)
 
-    # --- Step 3: Click Cashback button ---
+    # =====================================================
+    # Step 3 : Click Cashback button
+    # =====================================================
+
     cashback_btn = wait.until(
         EC.element_to_be_clickable(
             (AppiumBy.ID, "com.santa.web3.browser:id/cashback_btn")
         )
     )
+
+    assert cashback_btn.is_displayed(), "Cashback button is not visible."
+
     cashback_btn.click()
-    print("Step 4: Cashback button clicked.", flush=True)
-    time.sleep(2)
 
-    # ===== Assertion 1: Cashback popup is visible + content verified =====
+    print("Step 3: Cashback button clicked.", flush=True)
 
-    # 1a. Popup container visible
-    popup_container = wait.until(
+    # =====================================================
+    # Step 4 : Verify Cashback popup
+    # =====================================================
+
+    popup = wait.until(
         EC.visibility_of_element_located(
             (AppiumBy.ID, "com.santa.web3.browser:id/tab_content")
         )
     )
-    assert popup_container.is_displayed(), "Cashback popup container did not appear"
 
-    # 1b. Cashback title visible
+    assert popup.is_displayed(), "Cashback popup is not displayed."
+
     cashback_title = wait.until(
         EC.visibility_of_element_located(
-            (AppiumBy.XPATH, '//android.widget.TextView[@text="Cashback"]')
+            (
+                AppiumBy.XPATH,
+                '//android.widget.TextView[@text="Cashback"]'
+            )
         )
     )
-    assert cashback_title.is_displayed(), "Cashback popup title not visible"
 
-    # 1c. Cashback balance visible
     cashback_balance = wait.until(
         EC.visibility_of_element_located(
-            (AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "$")]')
+            (
+                AppiumBy.XPATH,
+                '//android.widget.TextView[contains(@text,"$")]'
+            )
         )
     )
-    assert cashback_balance.is_displayed(), "Cashback balance not visible"
+
+    assert cashback_title.is_displayed()
+    assert cashback_balance.is_displayed()
 
     print(
-        f"Step 5: Cashback popup opened. Title: 'Cashback', Balance: '{cashback_balance.text}'",
-        flush=True,
+        f"Step 4: Cashback popup displayed. Balance: {cashback_balance.text}",
+        flush=True
     )
 
-    # --- Step 6: Swipe DOWN on drag handle to close popup ---
+    # =====================================================
+    # Step 5 : Locate toolbar
+    # =====================================================
 
     toolbar = wait.until(
-        EC.presence_of_element_located(
-            (AppiumBy.ID, "com.santa.web3.browser:id/toolbar")
+        EC.visibility_of_element_located(
+            (
+                AppiumBy.ID,
+                "com.santa.web3.browser:id/toolbar"
+            )
         )
     )
 
-    loc = toolbar.location
+    assert toolbar.is_displayed(), "Toolbar is not displayed."
+
+    location = toolbar.location
     size = toolbar.size
 
-    drag_handle_x = loc["x"] + size["width"] // 2
-    drag_handle_y = loc["y"]  # it will be top of toolbar
-    end_y = drag_handle_y + 300
+    start_x = location["x"] + size["width"] // 2
+
+    # Start well inside toolbar (avoids notification shade)
+    start_y = location["y"] + (size["height"] // 2)
+
+    end_y = start_y + 850
 
     print(
-        f"DEBUG - swipe from ({drag_handle_x}, {drag_handle_y}) to ({drag_handle_x}, {end_y})",
-        flush=True,
+        f"Dragging toolbar from ({start_x}, {start_y}) "
+        f"to ({start_x}, {end_y})",
+        flush=True
     )
 
-    driver.swipe(
-        drag_handle_x,
-        drag_handle_y,
-        drag_handle_x,
-        end_y,
-        duration=800,
+    # =====================================================
+    # Step 6 : Drag toolbar down
+    # =====================================================
+
+    driver.execute_script(
+        "mobile: dragGesture",
+        {
+            "startX": start_x,
+            "startY": start_y,
+            "endX": start_x,
+            "endY": end_y,
+            "speed": 6000
+        }
     )
 
-    print("Step 7: Swiped down on drag handle to close cashback popup.", flush=True)
+    print("Step 6: Drag gesture performed.", flush=True)
+
     time.sleep(2)
 
-    # ===== Assertion 2: Cashback popup is NO LONGER visible =====
-    popup_gone = wait.until(
+    # =====================================================
+    # Step 7 : Verify popup closed
+    # =====================================================
+
+    popup_closed = wait.until(
         EC.invisibility_of_element_located(
-            (AppiumBy.ID, "com.santa.web3.browser:id/tab_content")
+            (
+                AppiumBy.ID,
+                "com.santa.web3.browser:id/tab_content"
+            )
         )
     )
-    assert popup_gone, "Cashback popup is still visible after swipe"
 
-    print("Step 8: Cashback popup closed successfully.", flush=True)
+    assert popup_closed, "Cashback popup is still visible."
 
-    # ===== Assertion 3: Verify NTP is visible =====
+    print("Step 7: Cashback popup closed.", flush=True)
+
+    # =====================================================
+    # Step 8 : Verify NTP displayed
+    # =====================================================
+
     ntp = wait.until(
         EC.visibility_of_element_located(
             (
@@ -122,31 +173,32 @@ try:
         )
     )
 
-    assert ntp.is_displayed(), "NTP is not visible after closing cashback popup"
+    assert ntp.is_displayed(), "NTP is not visible."
 
-    print("Step 9: NTP is visible after closing cashback popup.", flush=True)
+    print("Step 8: NTP is visible.", flush=True)
 
     TEST_PASSED = True
 
 except TimeoutException:
-    print("TIMEOUT - dumping page source for inspection", flush=True)
+
+    print("\nTIMEOUT OCCURRED\n", flush=True)
     print(driver.page_source)
-    TEST_PASSED = False
 
 except AssertionError as e:
-    print(f"ASSERTION FAILED: {e}", flush=True)
+
+    print(f"\nASSERTION FAILED: {e}\n", flush=True)
     print(driver.page_source)
-    TEST_PASSED = False
 
 except Exception as e:
-    print(f"UNEXPECTED ERROR: {e}", flush=True)
+
+    print(f"\nUNEXPECTED ERROR: {e}\n", flush=True)
     print(driver.page_source)
-    TEST_PASSED = False
 
 finally:
+
     if TEST_PASSED:
-        print("\n========== TEST RESULT: PASSED ✅ ==========", flush=True)
+        print("\n========== TEST RESULT : PASSED ==========\n")
     else:
-        print("\n========== TEST RESULT: FAILED ❌ ==========", flush=True)
+        print("\n========== TEST RESULT : FAILED ==========\n")
 
     driver.quit()

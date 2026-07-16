@@ -10,7 +10,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 print("Step 2: creating session, this may take 20-40s...", flush=True)
 
-PACKAGE_NAME = "com.santa.web3.browser_qa"
+PACKAGE_NAME = "com.santa.web3.browser"
 APP_ACTIVITY = "com.google.android.apps.chrome.Main"
 APPIUM_SERVER = "http://127.0.0.1:4723"
 PLAY_STORE_PACKAGES = {"com.android.vending"}

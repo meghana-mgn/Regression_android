@@ -45,147 +45,107 @@ TEST_PASSED = False
 try:
 
     # =====================================================
-    # Step 1 : Click Search Bar
+    # Step 1 : Click 'Set as default browser' Menu Option
     # =====================================================
 
-    search_box = wait.until(
-        EC.element_to_be_clickable(
-            (
-                AppiumBy.ID,
-                "com.santa.web3.browser:id/search_box_text"
-            )
-        )
-    )
-
-    assert search_box.is_displayed(), "Search bar is not displayed."
-
-    search_box.click()
-
-    print("Step 1: Search bar clicked.")
-
-    # =====================================================
-    # Step 2 : Verify Keyboard
-    # =====================================================
-
-    url_bar = wait.until(
-        EC.visibility_of_element_located(
-            (
-                AppiumBy.ID,
-                "com.santa.web3.browser:id/url_bar"
-            )
-        )
-    )
-
-    assert url_bar.is_displayed(), "URL bar is not displayed."
-
-    assert url_bar.get_attribute("focused") == "true", \
-        "Keyboard did not open."
-
-    print("Step 2: Keyboard displayed.")
-
-    # =====================================================
-    # Step 3 : Enter Search Text
-    # =====================================================
-
-    url_bar.clear()
-    url_bar.send_keys("hello")
-
-    print("Step 3: Entered 'hello'.")
-
-    # =====================================================
-    # Step 4 : Verify Autosuggestions
-    # =====================================================
-
-    suggestion_list = wait.until(
-        EC.visibility_of_element_located(
-            (
-                AppiumBy.XPATH,
-                '//androidx.recyclerview.widget.RecyclerView[contains(@content-desc,"suggested items")]'
-            )
-        )
-    )
-
-    assert suggestion_list.is_displayed(), \
-        "Autosuggestions not displayed."
-
-    print("Step 4: Autosuggestions displayed.")
-
-    # =====================================================
-    # Step 5 : Click First Suggestion
-    # =====================================================
-
-    first_suggestion = wait.until(
+    set_default_browser_option = wait.until(
         EC.element_to_be_clickable(
             (
                 AppiumBy.XPATH,
-                '//androidx.recyclerview.widget.RecyclerView[contains(@content-desc,"suggested items")]/android.view.ViewGroup[1]'
+                '//android.widget.TextView[@resource-id="com.santa.web3.browser:id/menu_item_text" '
+                'and @text="Set as default browser"]'
             )
         )
     )
 
-    first_suggestion.click()
+    assert set_default_browser_option.is_displayed(), \
+        "'Set as default browser' option is not displayed."
 
-    print("Step 5: First autosuggestion clicked.")
+    set_default_browser_option.click()
+
+    print("Step 1: 'Set as default browser' option clicked.")
 
     # =====================================================
-    # Step 6 : Verify Landing Page Loaded
+    # Step 2 : Verify Prompt Displayed
     # =====================================================
 
-    time.sleep(5)
+    time.sleep(2)  # buffer for system prompt/dialog to render
 
-    url_bar = wait.until(
+    default_browser_prompt = wait.until(
         EC.visibility_of_element_located(
             (
-                AppiumBy.ID,
-                "com.santa.web3.browser:id/url_bar"
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                'new UiSelector().className("android.widget.LinearLayout").instance(1)'
             )
         )
     )
 
-    current_url = url_bar.text.strip()
+    assert default_browser_prompt.is_displayed(), \
+        "Set as default browser prompt did not appear."
 
-    assert current_url != "", "Landing page not loaded."
-
-    print("Step 6: Landing page loaded.")
-    print("Current URL:", current_url)
+    print("Step 2: Set as default browser prompt displayed successfully.")
 
     # =====================================================
-    # Step 7 : Click + Button
+    # Step 3 : Click 'Cancel' Button on Prompt
     # =====================================================
 
-    plus_button = wait.until(
+    cancel_button = wait.until(
         EC.element_to_be_clickable(
             (
                 AppiumBy.ID,
-                "com.santa.web3.browser:id/optional_toolbar_button"
+                "com.santa.web3.browser:id/btn_cancel"
             )
         )
     )
 
-    assert plus_button.is_displayed(), \
-        "+ button is not displayed."
+    assert cancel_button.is_displayed(), "'Cancel' button is not displayed."
 
-    plus_button.click()
+    cancel_button.click()
 
-    print("Step 7: '+' button clicked.")
+    print("Step 3: 'Cancel' button clicked.")
 
     # =====================================================
-    # Step 8 : Verify NTP Displayed
+    # Step 4 : Verify Prompt Closed
+    # (check that btn_cancel itself is gone, not a generic LinearLayout)
     # =====================================================
 
-    ntp = wait.until(
+    time.sleep(1)
+
+    prompt_closed = False
+    try:
+        wait_short = WebDriverWait(driver, 5)
+        wait_short.until(
+            EC.invisibility_of_element_located(
+                (
+                    AppiumBy.ID,
+                    "com.santa.web3.browser:id/btn_cancel"
+                )
+            )
+        )
+        prompt_closed = True
+    except TimeoutException:
+        prompt_closed = False
+
+    assert prompt_closed, "Prompt did not close after clicking Cancel."
+
+    print("Step 4: Prompt closed successfully.")
+
+    # =====================================================
+    # Step 5 : Verify NTP (New Tab Page) is Visible
+    # =====================================================
+
+    ntp_element = wait.until(
         EC.visibility_of_element_located(
             (
-                AppiumBy.XPATH,
-                '//android.webkit.WebView[@text="Welcome to Santa"]'
+                AppiumBy.ID,
+                "com.santa.web3.browser:id/ntp_overlay"
             )
         )
     )
 
-    assert ntp.is_displayed(), \
-        "NTP is not displayed."
+    assert ntp_element.is_displayed(), "NTP is not displayed."
 
-    print("Step 8: NTP is displayed.")
+    print("Step 5: NTP is displayed successfully.")
 
     TEST_PASSED = True
 

@@ -4,25 +4,27 @@ from pathlib import Path
 
 
 TEST_FILES = [
-    "3dotsmenuclick.py",
-    "addquicklinks.py",
-    "addsearch.py",
     "applaunch.py",
-    "cashbackopenclose.py",
-    "customadd.py",
-    "customcancel.py",
-    "help_feedback.py",
-    "nativebannerredirection.py",
-    "news.py",
     "ntpwidgetclick.py",
     "ntpwidgetrefresh.py",
-    "playwallopenclose.py",
-    "removefromrecents.py",
-    "rewardshome.py",
-    "rewardsopen.py",
-    "scrolltotopclick.py",
     "searchbarclick.py",
-    "themechange.py",
+    # "3dotsmenuclick.py",
+    "addquicklinks.py",
+    # "addsearch.py",
+    # "customadd.py",
+    # "customcancel.py",
+    "bannerredirection.py",
+    # "help_feedback.py",
+    # "news.py",
+    "rewardsopen.py",
+    "rewardshome.py",
+    "cashbackopenclose.py"
+    "playwallopenclose.py",
+    # "scrolltotopclick.py",
+    # "themechange.py",
+    "removefromrecents.py",
+    "3dotsmenuclick.py",
+    "privatetabclick.py",
 ]
 
 

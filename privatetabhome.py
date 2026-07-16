@@ -42,30 +42,38 @@ wait = WebDriverWait(driver, 30)
 
 TEST_PASSED = False
 
+# =====================================================
+# Keyword to search
+# =====================================================
+
+SEARCH_KEYWORD = "python appium"
+
 try:
 
     # =====================================================
-    # Step 1 : Click Search Bar
+    # Step 1 : Click on URL Bar
     # =====================================================
 
-    search_box = wait.until(
+    url_bar = wait.until(
         EC.element_to_be_clickable(
             (
                 AppiumBy.ID,
-                "com.santa.web3.browser:id/search_box_text"
+                "com.santa.web3.browser:id/url_bar"
             )
         )
     )
 
-    assert search_box.is_displayed(), "Search bar is not displayed."
+    assert url_bar.is_displayed(), "URL bar is not displayed."
 
-    search_box.click()
+    url_bar.click()
 
-    print("Step 1: Search bar clicked.")
+    print("Step 1: URL bar clicked.")
 
     # =====================================================
-    # Step 2 : Verify Keyboard
+    # Step 2 : Verify Keyboard Opened (URL bar focused)
     # =====================================================
+
+    time.sleep(1)  # small buffer for focus state to update
 
     url_bar = wait.until(
         EC.visibility_of_element_located(
@@ -76,59 +84,44 @@ try:
         )
     )
 
-    assert url_bar.is_displayed(), "URL bar is not displayed."
+    is_focused = url_bar.get_attribute("focused")
+    print("URL bar focused attribute:", is_focused)
 
-    assert url_bar.get_attribute("focused") == "true", \
-        "Keyboard did not open."
+    assert is_focused == "true", "Keyboard did not open / URL bar not focused."
 
     print("Step 2: Keyboard displayed.")
 
     # =====================================================
-    # Step 3 : Enter Search Text
+    # Step 3 : Enter Search Keyword
     # =====================================================
 
     url_bar.clear()
-    url_bar.send_keys("hello")
+    url_bar.send_keys(SEARCH_KEYWORD)
 
-    print("Step 3: Entered 'hello'.")
-
-    # =====================================================
-    # Step 4 : Verify Autosuggestions
-    # =====================================================
-
-    suggestion_list = wait.until(
-        EC.visibility_of_element_located(
-            (
-                AppiumBy.XPATH,
-                '//androidx.recyclerview.widget.RecyclerView[contains(@content-desc,"suggested items")]'
-            )
-        )
-    )
-
-    assert suggestion_list.is_displayed(), \
-        "Autosuggestions not displayed."
-
-    print("Step 4: Autosuggestions displayed.")
+    print(f"Step 3: Entered keyword '{SEARCH_KEYWORD}'.")
 
     # =====================================================
-    # Step 5 : Click First Suggestion
+    # Step 4 : Verify Entered Text in URL Bar
     # =====================================================
 
-    first_suggestion = wait.until(
-        EC.element_to_be_clickable(
-            (
-                AppiumBy.XPATH,
-                '//androidx.recyclerview.widget.RecyclerView[contains(@content-desc,"suggested items")]/android.view.ViewGroup[1]'
-            )
-        )
-    )
+    entered_text = url_bar.text.strip()
+    print("Text currently in URL bar:", entered_text)
 
-    first_suggestion.click()
+    assert entered_text == SEARCH_KEYWORD, \
+        f"Entered text mismatch. Expected '{SEARCH_KEYWORD}', got '{entered_text}'."
 
-    print("Step 5: First autosuggestion clicked.")
+    print("Step 4: Verified keyword present in URL bar.")
 
     # =====================================================
-    # Step 6 : Verify Landing Page Loaded
+    # Step 5 : Press Enter to submit search
+    # =====================================================
+
+    driver.press_keycode(66)  # 66 = Android KEYCODE_ENTER
+
+    print("Step 5: Search submitted.")
+
+    # =====================================================
+    # Step 6 : Verify Page/Results Loaded
     # =====================================================
 
     time.sleep(5)
@@ -143,49 +136,53 @@ try:
     )
 
     current_url = url_bar.text.strip()
+    print("Current URL bar text:", current_url)
 
-    assert current_url != "", "Landing page not loaded."
+    assert current_url != "", "Search results / page not loaded."
 
-    print("Step 6: Landing page loaded.")
-    print("Current URL:", current_url)
+    print("Step 6: Search results loaded.")
 
     # =====================================================
-    # Step 7 : Click + Button
+    # Step 7 : Click Home Button
     # =====================================================
 
-    plus_button = wait.until(
+    home_button = wait.until(
         EC.element_to_be_clickable(
             (
                 AppiumBy.ID,
-                "com.santa.web3.browser:id/optional_toolbar_button"
+                "com.santa.web3.browser:id/home_button"
             )
         )
     )
 
-    assert plus_button.is_displayed(), \
-        "+ button is not displayed."
+    assert home_button.is_displayed(), "Home button is not displayed."
 
-    plus_button.click()
+    home_button.click()
 
-    print("Step 7: '+' button clicked.")
+    print("Step 7: Home button clicked.")
 
     # =====================================================
-    # Step 8 : Verify NTP Displayed
+    # Step 8 : Verify Home Page Loaded
     # =====================================================
 
-    ntp = wait.until(
+    time.sleep(3)
+
+    url_bar = wait.until(
         EC.visibility_of_element_located(
             (
-                AppiumBy.XPATH,
-                '//android.webkit.WebView[@text="Welcome to Santa"]'
+                AppiumBy.ID,
+                "com.santa.web3.browser:id/url_bar"
             )
         )
     )
 
-    assert ntp.is_displayed(), \
-        "NTP is not displayed."
+    home_url_text = url_bar.text.strip()
+    print("URL bar text after clicking Home:", home_url_text)
 
-    print("Step 8: NTP is displayed.")
+    assert home_url_text != SEARCH_KEYWORD, \
+        "Home page did not load (URL bar still shows previous search)."
+
+    print("Step 8: Home page loaded successfully.")
 
     TEST_PASSED = True
 
