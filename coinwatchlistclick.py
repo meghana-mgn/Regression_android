@@ -47,20 +47,31 @@ TEST_PASSED = False
 # Coin watchlist settings
 # =====================================================
 
-# Exact text captured from the device (price/percent change constantly,
-# so this is tried first, then we fall back to matching by coin symbol).
-COIN_ITEM_EXACT_TEXT = "coin-icon $64323 Btc -1%"
-COIN_ITEM_SYMBOL = "Btc"
-
-COIN_ITEM_EXACT_XPATH = (
-    '//android.widget.Button[@text="' + COIN_ITEM_EXACT_TEXT + '"]'
-)
-COIN_ITEM_CONTAINS_XPATH = (
-    '//android.widget.Button[contains(@text, "coin-icon") and contains(@text, "'
-    + COIN_ITEM_SYMBOL + '")]'
-)
-
+COIN_ITEMS_XPATH = '//android.widget.Button[contains(@text, "coin-icon")]'
+OPTIONAL_TOOLBAR_BUTTON_XPATH = '//*[contains(@resource-id, ":id/optional_toolbar_button")]'
+NTP_OVERLAY_ID = "com.santa.web3.browser:id/ntp_overlay"
 URL_BAR_ID = "com.santa.web3.browser:id/url_bar"
+
+# Maps the coin symbol shown in the watchlist (e.g. "Btc") to the coin name
+# used in the redirected page's URL (e.g. "bitcoin").
+COIN_SYMBOL_TO_NAME = {
+    "btc": "bitcoin",
+    "eth": "ethereum",
+    "usdt": "tether",
+    "bnb": "bnb",
+    "usdc": "usd-coin",
+    "xrp": "ripple",
+    "ada": "cardano",
+    "doge": "dogecoin",
+    "sol": "solana",
+    "trx": "tron",
+    "dot": "polkadot",
+    "matic": "polygon",
+    "ltc": "litecoin",
+    "shib": "shiba-inu",
+    "avax": "avalanche-2",
+}
+
 
 def scroll_up_half_screen():
     size = driver.get_window_size()
@@ -76,25 +87,144 @@ def scroll_up_half_screen():
     print(f"Step 2: Scrolled up by {height // 2}px (half of screen height).")
 
 
-def locate_coin_item():
-    try:
-        element = driver.find_element(AppiumBy.XPATH, COIN_ITEM_EXACT_XPATH)
-        return element, "exact"
-    except NoSuchElementException:
-        pass
+def get_coin_item_count():
+    items = driver.find_elements(AppiumBy.XPATH, COIN_ITEMS_XPATH)
+    return len(items)
 
-    try:
-        element = driver.find_element(AppiumBy.XPATH, COIN_ITEM_CONTAINS_XPATH)
-        return element, "symbol"
-    except NoSuchElementException:
-        return None, None
+
+def get_coin_item_by_position(position):
+    xpath = f'({COIN_ITEMS_XPATH})[{position}]'
+    return driver.find_element(AppiumBy.XPATH, xpath)
+
+
+def wait_for_coin_watchlist(max_attempts=6):
+    for attempt in range(max_attempts):
+        count = get_coin_item_count()
+
+        if count > 0:
+            first_item = get_coin_item_by_position(1)
+            if first_item.is_displayed():
+                print(f"Step 2: Coin watchlist visible with {count} item(s) "
+                      f"(after {attempt} extra scroll(s)).")
+                return count
+
+        print(f"Step 2: Coin watchlist not visible yet, scrolling "
+              f"(attempt {attempt + 1}/{max_attempts}).")
+        scroll_up_half_screen()
+        time.sleep(6)
+
+    raise NoSuchElementException(
+        "Coin watchlist items not found after scrolling."
+    )
 
 
 def extract_coin_symbol(item_text):
     match = re.search(r"coin-icon\s+\$[\d.,]+\s+(\w+)\s*[+-]?\d+(\.\d+)?%", item_text)
-    if match:
-        return match.group(1)
-    return COIN_ITEM_SYMBOL
+    if not match:
+        raise AssertionError(f"Could not extract coin symbol from '{item_text}'.")
+    return match.group(1)
+
+
+def get_expected_coin_name(coin_symbol):
+    coin_name = COIN_SYMBOL_TO_NAME.get(coin_symbol.lower())
+    if coin_name is None:
+        raise AssertionError(
+            f"No known coin name mapping for symbol '{coin_symbol}'. "
+            f"Add it to COIN_SYMBOL_TO_NAME."
+        )
+    return coin_name
+
+
+def scroll_left_for_coin_item(position, item_width, container_y):
+    scroll_distance = (position - 1) * item_width
+
+    if scroll_distance <= 0:
+        print(f"Step 2: [{position}] No horizontal scroll needed.")
+        return
+
+    size = driver.get_window_size()
+    width = size["width"]
+
+    # start_x = width - 60 # start x seem not correct, we need start_x = center of horizontal screen
+    size = driver.get_window_size()
+    width = size["width"]
+
+    start_x = width // 2
+  
+    end_x = start_x - scroll_distance
+
+    driver.swipe(start_x, container_y, end_x, container_y, 800)
+    time.sleep(1)
+
+    print(f"Step 2: [{position}] Scrolled coin watchlist left by "
+          f"{scroll_distance}px ((position - 1) * item width).")
+
+
+def click_plus_button_to_open_ntp():
+    plus_button = wait.until(
+        EC.element_to_be_clickable((AppiumBy.XPATH, OPTIONAL_TOOLBAR_BUTTON_XPATH))
+    )
+
+    assert plus_button.is_displayed(), "'+' button is not visible."
+
+    plus_button.click()
+
+    print("Navigation: '+' button clicked to return to NTP.")
+
+    ntp_element = wait.until(
+        EC.visibility_of_element_located((AppiumBy.ID, NTP_OVERLAY_ID))
+    )
+    assert ntp_element.is_displayed(), "NTP is not displayed after returning."
+
+    time.sleep(2)
+
+
+def verify_coin_item(position, item_width, container_y):
+    scroll_left_for_coin_item(position, item_width, container_y)
+
+    coin_item = get_coin_item_by_position(position)
+    assert coin_item.is_displayed(), f"Coin item #{position} is not visible."
+
+    coin_item_text = coin_item.get_attribute("text") or ""
+    coin_symbol = extract_coin_symbol(coin_item_text)
+
+    print(f"Step 2: [{position}] Clicking coin watchlist item -> '{coin_item_text}'")
+
+    coin_item.click()
+
+    time.sleep(10)
+
+    print(f"Step 2: [{position}] Waited 10s after clicking coin watchlist item.")
+
+    # =====================================================
+    # Step 3 : Verify URL Bar Reflects Clicked Coin
+    # =====================================================
+
+    url_bar = wait.until(
+        EC.visibility_of_element_located((AppiumBy.ID, URL_BAR_ID))
+    )
+
+    current_url = url_bar.text.strip()
+
+    assert current_url != "", f"URL bar is empty after clicking coin item #{position}."
+
+    print(f"Step 3: [{position}] URL bar content -> {current_url}")
+
+    url_without_query = current_url.split("?")[0].rstrip("/")
+    last_path_segment = url_without_query.split("/")[-1]
+
+    expected_coin_name = get_expected_coin_name(coin_symbol)
+
+    print(f"Step 3: [{position}] Last path segment -> '{last_path_segment}', "
+          f"coin symbol -> '{coin_symbol}', expected coin name -> '{expected_coin_name}'")
+
+    assert expected_coin_name.lower() in last_path_segment.lower(), (
+        f"[{position}] Expected coin name '{expected_coin_name}' (for symbol "
+        f"'{coin_symbol}') not found in last URL path segment '{last_path_segment}'."
+    )
+
+    print(f"Step 3: [{position}] URL bar verification passed for "
+          f"'{coin_symbol}' -> '{expected_coin_name}'.")
 
 
 try:
@@ -139,70 +269,35 @@ try:
     print("Step 1: Santa Browser launched successfully.")
 
     # =====================================================
-    # Step 2 : Find and Click Coin Watchlist Item
+    # Step 2 & 3 : Verify Every Coin Watchlist Item
     # =====================================================
-
-    coin_item, match_type = locate_coin_item()
-
-    if coin_item is None:
-        raise NoSuchElementException("Coin watchlist item not found.")
-
-    print(f"Step 2: Coin item found using {match_type} match.")
 
     scroll_up_half_screen()
-    time.sleep(1)
+    time.sleep(5)
+  
+    coin_count = wait_for_coin_watchlist()
 
-    coin_item, match_type = locate_coin_item()
+    print(f"Step 2: Found {coin_count} coin watchlist item(s).")
 
-    if coin_item is None:
-        raise NoSuchElementException(
-            "Coin watchlist item not found after scrolling."
-        )
+    for position in range(1, coin_count + 1):
 
-    assert coin_item.is_displayed(), "Coin watchlist item is not visible after scrolling."
+        print(f"\n--- Verifying coin watchlist item #{position} of {coin_count} ---")
 
-    coin_item_text = coin_item.get_attribute("text") or COIN_ITEM_EXACT_TEXT
-    coin_symbol = extract_coin_symbol(coin_item_text)
+        # Re-measure the row every time: its vertical position can shift
+        # between page loads (e.g. ad banners pushing content down).
+        first_item = get_coin_item_by_position(1)
+        assert first_item.is_displayed(), "First coin watchlist item is not visible."
 
-    print(f"Step 2: Clicking coin watchlist item -> '{coin_item_text}'")
+        item_width = first_item.size["width"]
+        container_y = first_item.location["y"] + first_item.size["height"] // 2
 
-    coin_item.click()
+        verify_coin_item(position, item_width, container_y)
 
-    time.sleep(10)
+        if position < coin_count:
+            click_plus_button_to_open_ntp()
+            wait_for_coin_watchlist()
 
-    print("Step 2: Waited 10s after clicking coin watchlist item.")
-
-    # =====================================================
-    # Step 3 : Verify URL Bar Reflects Clicked Coin
-    # =====================================================
-
-    url_bar = wait.until(
-        EC.visibility_of_element_located(
-            (AppiumBy.ID, URL_BAR_ID)
-        )
-    )
-
-    current_url = url_bar.text.strip()
-
-    assert current_url != "", "URL bar is empty after clicking coin item."
-
-    print("Step 3: URL bar content ->", current_url)
-
-    url_without_query = current_url.split("?")[0].rstrip("/")
-    last_path_segment = url_without_query.split("/")[-1]
-
-    print(f"Step 3: Last path segment -> '{last_path_segment}'")
-    print(f"Step 3: Expected coin symbol -> '{coin_symbol}'")
-
-    coin_symbol_chars = set(coin_symbol.lower())
-    last_segment_chars = set(last_path_segment.lower())
-
-    assert coin_symbol_chars.issubset(last_segment_chars), (
-        f"Not all characters of coin symbol '{coin_symbol}' were found in "
-        f"last URL path segment '{last_path_segment}'."
-    )
-
-    print("Step 3: URL bar verification passed.")
+    print(f"\nAll {coin_count} coin watchlist item(s) verified successfully.")
 
     TEST_PASSED = True
 
